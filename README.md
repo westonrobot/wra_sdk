@@ -1,6 +1,6 @@
 # Weston Robot Application SDK (wra_sdk)
 
-wra_sdk provides C++ interface to autonomous navigation and application development functionalities provided by the robot platforms from Weston Robot.
+wra_sdk provides C++ interface to autonomous navigation and application development functionalities provided by the robot platforms from Weston Robot. wra_sdk is provided as a **Debian installation package** only and you can install it by following the steps given below. For sample code, please check the "sample-*" branches of this repository. 
 
 ## Supported platforms
 
