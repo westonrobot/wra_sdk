@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16.0)
-project(robot_base)
+project(wra_sdk_sample)
 
 ## Set compiler to use c++ 11 features
 set(CMAKE_CXX_STANDARD 14)
@@ -40,9 +40,12 @@ message(STATUS "------------------------------------------------------")
 
 ## Find wra_sdk
 find_package(wra_sdk REQUIRED)
+find_package(OpenCV QUIET)
 
-add_executable(sample_camera_client src/sample_camera_client.cpp)
-target_link_libraries(sample_camera_client PRIVATE westonrobot::wra_sdk)
+if(OpenCV_FOUND) 
+    add_executable(sample_camera_client src/sample_camera_client.cpp)
+    target_link_libraries(sample_camera_client PRIVATE westonrobot::wra_sdk ${OpenCV_LIBS})
+endif()
 
 add_executable(sample_mobile_base_client src/sample_mobile_base_client.cpp)
 target_link_libraries(sample_mobile_base_client PRIVATE westonrobot::wra_sdk)

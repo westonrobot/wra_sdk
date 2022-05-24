@@ -44,7 +44,7 @@ $ make install
 $ popd
 ```
 
-Now install the SDK package
+Now install the SDK package. Note that if you've installed **wr_assisted_teleop**, you likely have already added the Weston Robot apt source. In such a case, you can skip the first two lines of commands.
 
 ```
 $ echo "deb https://westonrobot.jfrog.io/artifactory/wrtoolbox-release $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/weston-robot.list

@@ -1,3 +1,12 @@
+/* 
+ * mobile_base_client.cpp
+ * 
+ * Created on: Oct 19, 2021 21:52
+ * Description: 
+ * 
+ * Copyright (c) 2021 Ruixiang Du (rdu)
+ */ 
+
 #include <memory.h>
 #include <stdio.h>
 
@@ -15,46 +24,68 @@
 
 using namespace westonrobot;
 
-int main(int argc, char** argv) {
-  if (argc < 2) {
-    std::cout << "usage: ./mobile_base_client \"ip:port\"\n";
-    return 0;
-  }
+int main() {
+  std::string target_str = "10.20.0.1:80086";
+  
   MobileBaseClient client(
-      grpc::CreateChannel(argv[1], grpc::InsecureChannelCredentials()));
-  HandshakeResultType feedback;
+      grpc::CreateChannel(target_str, grpc::InsecureChannelCredentials()));
 
-  std::cout << "Connection: " << client.IsRobotBaseAlive() << std::endl;
-  feedback = client.RequestControl();
-
-  if (feedback.code != HANDSHAKE_RESULT_CONTROL_ACQUIRED &&
-      feedback.code != HANDSHAKE_RESULT_ALREADY_GAINED_CONTROL) {
-    std::cout << "Failed to acquire control of the robot." << std::endl;
-    return -1;
+  RpcCallResult rpc_call_result;
+  if (!client.HasControlToken(rpc_call_result, 50) &&
+      rpc_call_result == RpcCallResult::Success) {
+    auto response = client.RequestControl(rpc_call_result, 50);
+    if (rpc_call_result == RpcCallResult::Success) {
+      if (response.feedback() ==
+              rpc_msgs::mobile_base::ControlRequestFeedback::CONTROL_ACQUIRED ||
+          response.feedback() == rpc_msgs::mobile_base::ControlRequestFeedback::
+                                     ALREADY_GAINED_CONTROL) {
+        std::cout << "Acquired control of the robot." << std::endl;
+      } else {
+        std::cout << "Failed to acquire control of the robot: "
+                  << response.feedback() << std::endl;
+        return -1;
+      }
+    }
   }
 
-  ZVector3 linear, angular;
-  linear.y = 0;
-  linear.z = 0;
-  angular.x = 0;
-  angular.y = 0;
+  rpc_msgs::mobile_base::MotionCommand motion_cmd;
+  motion_cmd.mutable_linear()->set_x(0.5);
+  motion_cmd.mutable_linear()->set_y(0);
+  motion_cmd.mutable_linear()->set_z(0);
+  motion_cmd.mutable_angular()->set_x(0);
+  motion_cmd.mutable_angular()->set_y(0);
+  motion_cmd.mutable_angular()->set_z(0.5);
 
-  linear.x = 0.5;
-  angular.z = 0.0;
+  while (client.HasControlToken(rpc_call_result, 50) &&
+         rpc_call_result == RpcCallResult::Success) {
+    RpcCallResult ret;
+    client.SetMotionCommand(motion_cmd, ret, 50);
 
-  MotionStateMsg state;
+    // std::cout << "motion command: " << motion_cmd.linear().x() << " , "
+    //           << motion_cmd.angular().z() << std::endl;
 
-  while (client.SdkHasControlToken()) {
-    client.SetMotionCommand(linear, angular);
-    // std::cout << "Connection: " << client.IsRobotBaseAlive() << std::endl;
-    std::cout << "motion command: " << linear.x << " , " << angular.z
-              << std::endl;
-    state = client.GetMotionState();
-    
-    std::cout<<"motion state:" << state.actual_motion.linear.x << " , "<< state.actual_motion.angular.z<< std::endl;
-    auto data = client.GetActuatorState();
-    std::cout<< data[0].motor.rpm<<"\n";
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    auto robot_state = client.GetRobotState(ret, 50);
+    if (ret == RpcCallResult::Success) {
+      printf("linear: %f, angular: %f\n", robot_state.odometry().linear().x(),
+             robot_state.odometry().angular().z());
+    }
+
+    auto sensor_data = client.GetSensorData(ret, 50);
+    if (ret == RpcCallResult::Success) {
+      auto us_data = sensor_data.ultrasonic().data();
+      std::cout << "Ultrasonic: ";
+      for (auto it = us_data.begin(); it != us_data.end(); ++it) {
+        std::cout << it->range() << ",";
+      }
+      std::cout << std::endl;
+
+      auto tof_data = sensor_data.tof().data();
+      std::cout << "Tof: ";
+      for (auto it = tof_data.begin(); it != tof_data.end(); ++it) {
+        std::cout << it->range() << ",";
+      }
+      std::cout << std::endl;
+    }
   }
 
   return 0;
